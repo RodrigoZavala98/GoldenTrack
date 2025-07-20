@@ -1,33 +1,111 @@
-import React, { useContext } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import React, { useContext, useState } from 'react';
+import { Trash2, Clock, Lock, Unlock } from 'lucide-react';
 import { AppContext } from '../../context/AppContext';
-import { deleteTooling } from '../../api';
-import { getExpirationStatus } from '../../utils/dateUtils'; // Reutilizamos nuestra función de utilidad
+import { deleteTooling, getToolingData } from '../../api';
+import { getExpirationStatus } from '../../utils/dateUtils';
 
 const ToolingDashboard = () => {
-    // Recuerda que en el contexto lo llamamos 'toolings', no 'specialPieces'
     const { toolings, lines, fetchData } = useContext(AppContext);
+    // El estado ahora guardará un objeto con los estados de cada serial
+    const [toolingScanData, setToolingScanData] = useState({});
 
     const handleDeleteTooling = async (toolingId) => {
         if (!window.confirm('¿Estás seguro de que quieres eliminar este grupo de herramentales?')) return;
         try {
             await deleteTooling(toolingId);
-            fetchData(); // Refrescamos los datos
+            fetchData();
         } catch (error) {
             console.error(error);
             alert('No se pudo eliminar el grupo de herramentales.');
         }
     };
 
+    /**
+     * FUNCIÓN CORREGIDA: Valida el userComment desde la ruta correcta (data.carrierInfo.userComment).
+     */
+    const handleUpdateLastPass = async (tooling) => {
+        const line = lines.find(l => l.lineaID === tooling.lineaID);
+        if (!line) {
+            alert('No se encontró la línea para este herramental.');
+            return;
+        }
+
+        // Muestra un estado general de "Cargando..." para el grupo
+        setToolingScanData(prev => ({ ...prev, [tooling.herramentalID]: { loading: true } }));
+
+        try {
+            const promises = tooling.seriales.map(s => 
+                getToolingData(s.serialNumber, line.nombre).then(res => res.json())
+            );
+
+            const results = await Promise.all(promises);
+            
+            const individualStatuses = {};
+
+            results.forEach((result, index) => {
+                const serialNumber = tooling.seriales[index].serialNumber;
+                const data = result?.data;
+
+                if (!data) {
+                    individualStatuses[serialNumber] = 'Error API';
+                    return;
+                }
+
+                // --- LÓGICA CORREGIDA ---
+                // La ruta correcta es data.carrierInfo.userComment
+                const userComment = data.carrierInfo?.userComment;
+                const lastUse = data.carrierInfo?.lastUseDate;
+				const isLocked = data.carrierInfo?.lock?.locked;
+
+                let statusText;
+                if (userComment && userComment.toLowerCase() === 'cleaned') {
+                    statusText = 'Solo Limpieza, pendiente de montar';
+                } else if (lastUse) {
+                    statusText = new Date(lastUse).toLocaleString('es-MX', {
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                        hour: '2-digit', minute: '2-digit', second: '2-digit'
+                    });
+                } else {
+                    statusText = 'Sin Montaje';
+                }
+
+                // Si el comentario es 'Cleaned' (independientemente de mayúsculas), se ignora la fecha.
+                if (userComment && userComment.toLowerCase() === 'cleaned') {
+                    individualStatuses[serialNumber] = 'Solo Limpieza, pendiente de montar';
+                } else if (lastUse) {
+                    // Si no es 'cleaned' y hay fecha, se muestra la fecha.
+                    individualStatuses[serialNumber] = new Date(lastUse).toLocaleString('es-MX', {
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                        hour: '2-digit', minute: '2-digit', second: '2-digit'
+                    });
+                } else {
+                    // Si no es 'cleaned' pero tampoco hay fecha.
+                    individualStatuses[serialNumber] = 'Sin Montaje';
+                }
+				
+				// --- Se guarda el texto del estado Y el estado de bloqueo ---
+                individualStatuses[serialNumber] = { statusText, isLocked };
+            });
+
+            // Actualiza el estado con un objeto que contiene los estados de cada serial
+            setToolingScanData(prev => ({ ...prev, [tooling.herramentalID]: { statuses: individualStatuses } }));
+
+        } catch (error) {
+            console.error("Error al consultar la API de herramentales:", error);
+            setToolingScanData(prev => ({ ...prev, [tooling.herramentalID]: { error: 'Error de red' } }));
+        }
+    };
+
     return (
-         <div>
+        <div>
             <h1 className="text-3xl font-bold mb-6">Dashboard de Herramentales</h1>
             
-            <div role="alert" className="alert alert-info alert-soft">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <span>Continuamos trabajando en el sistema de Herramentales para MPM, consulta la documentación de desarrollo para más información.</span>
+            <div role="alert" className="alert alert-info alert-soft mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>Recientemente se ha añadido una función para validar el último pase, así como una verificación del estado del herramental (bloqueada o no). Ahora, si un herramental fue únicamente limpiado y aún no ha sido probado en el equipo, el sistema mostrará un mensaje en letras amarillas: “Solo limpieza, pendiente de montar”.</span>
+                
             </div>
             
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -36,10 +114,12 @@ const ToolingDashboard = () => {
                 )}
                 {toolings.map(tooling => {
                     const expirationStatus = getExpirationStatus(tooling.fechaExpiracion);
+                    const groupScanData = toolingScanData[tooling.herramentalID];
+
                     return (
                     <div key={tooling.herramentalID} className="rounded-lg shadow-sm overflow-hidden border border-base-300 flex flex-col bg-base-200">
                          <div className={`p-2 text-center font-bold ${expirationStatus.colorClass} ${expirationStatus.textColor}`}>{expirationStatus.text}</div>
-                         <div className="p-4 flex-grow">
+                         <div className="p-4 flex-grow flex flex-col">
                              <div className="flex justify-between items-start">
                                  <h3 className="font-bold">{tooling.nombreGrupo}</h3>
                                  <button onClick={() => handleDeleteTooling(tooling.herramentalID)} className="btn btn-ghost btn-sm btn-square text-red-500">
@@ -48,12 +128,49 @@ const ToolingDashboard = () => {
                              </div>
                              <p className="text-sm mt-1">Línea: {lines.find(l => l.lineaID === tooling.lineaID)?.nombre || 'N/A'}</p>
                              <p className="text-sm">Resp: {tooling.responsable}</p>
-                             <div className="mt-4">
-                                <p className="text-xs font-semibold mb-1">Seriales:</p>
-                                <ul className="list-disc list-inside text-sm space-y-1">
-                                    {tooling.seriales.map((s, i) => <li key={i}>{s.serialNumber}</li>)}
+                             
+                             {/* --- SECCIÓN DE VISUALIZACIÓN CORREGIDA --- */}
+                             {/* Este bloque entero se encarga de mostrar la lista de seriales y sus estados individuales. */}
+                             <div className="mt-4 pt-2 border-t border-base-300">
+                                <p className="text-xs font-semibold mb-2">Herramentales y Último Pase:</p>
+                                
+                                {/* Muestra 'Cargando...' o 'Error' para todo el grupo si aplica */}
+                                {groupScanData?.loading && <p className="text-sm text-blue-400">Cargando datos...</p>}
+                                {groupScanData?.error && <p className="text-sm text-red-400">{groupScanData.error}</p>}
+
+                                 {/* El `<ul>` renderiza cada serial como un `<li>` */}
+                                <ul className="space-y-1 text-sm">
+                                    {tooling.seriales.map((s, i) => {
+                                        // --- 4. Se extrae el objeto completo de estado ---
+                                        const serialInfo = groupScanData?.statuses?.[s.serialNumber];
+                                        const serialStatus = serialInfo?.statusText || 'Pendiente';
+                                        const isLocked = serialInfo?.isLocked;
+                                        
+                                        let statusColor = 'text-gray-400';
+                                        if (serialStatus.includes('/')) statusColor = 'text-green-400';
+                                        else if (serialStatus === 'Solo Limpieza, pendiente de montar') statusColor = 'text-yellow-400';
+                                        else if (serialStatus.includes('Error') || serialStatus === 'Sin Montaje') statusColor = 'text-red-500';
+
+                                        return (
+                                            <li key={i} className="flex justify-between items-center text-xs">
+                                                {/* ---  Se muestra el ícono de candado --- */}
+                                                <div className="flex items-center gap-2">
+                                                    {isLocked === true && <Lock size={16} className="text-red-500" title="Bloqueado" />}
+                                                    {isLocked === false && <Unlock size={16} className="text-green-500" title="Desbloqueado" />}
+                                                    <span>{s.serialNumber}</span>
+                                                </div>
+                                                <span className={`font-mono ${statusColor}`}>{serialStatus}</span>
+                                            </li>
+                                        );
+                                    })}
                                 </ul>
                              </div>
+                         </div>
+                         <div className="p-2 bg-base-300/50">
+                             <button onClick={() => handleUpdateLastPass(tooling)} className="btn btn-sm btn-soft w-full flex items-center gap-1">
+                                <Clock size={14} />
+                                Último Pase
+                            </button>
                          </div>
                     </div>
                 )})}

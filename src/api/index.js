@@ -41,3 +41,16 @@ export const getPanelUnits = (serial, lineName) => {
     const requestUrl = `${MES_API_V2_BASE}/${equipment}/units/${serial},SMD_MOPS?includeSerialchange=true`;
     return fetch(requestUrl);
 };
+
+/**
+ * Obtiene los datos de un herramental.
+ * @param {string} serial - El nombre del herramental.
+ * @param {string} lineName - El nombre de la línea para construir la URL.
+ * @returns {Promise} - La promesa de la petición fetch.
+ */
+export const getToolingData = (serial, lineName) => {
+    // Asumimos que el nombre de la línea es el 'equipment' en la URL
+    const equipment = lineName.replace(/\s/g, '_');
+    const requestUrl = `${MES_API_V2_BASE}/${equipment}/carriers/${serial},SMT_TOOLING`;
+    return fetch(requestUrl);
+};

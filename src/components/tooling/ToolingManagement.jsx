@@ -10,7 +10,7 @@ const ToolingManagement = () => {
     const [selectedLine, setSelectedLine] = useState('');
     const [responsable, setResponsable] = useState('');
     const [newExpirationDate, setNewExpirationDate] = useState('');
-    const [serials, setSerials] = useState(Array(4).fill(''));
+    const [serials, setSerials] = useState(Array(3).fill(''));
 
     const handleSerialChange = (index, value) => {
         const newSerials = [...serials];
@@ -22,8 +22,8 @@ const ToolingManagement = () => {
         e.preventDefault();
         const cleanedSerials = serials.map(s => s.trim()).filter(s => s !== '');
 
-        if (!newToolingName.trim() || !selectedLine || !responsable.trim() || !newExpirationDate || cleanedSerials.length !== 4) {
-            alert("Por favor, completa todos los campos y los 4 números de serie.");
+        if (!newToolingName.trim() || !selectedLine || !responsable.trim() || !newExpirationDate || cleanedSerials.length !== 3) {
+            alert("Por favor, completa todos los campos.");
             return;
         }
 
@@ -42,7 +42,7 @@ const ToolingManagement = () => {
             setSelectedLine('');
             setResponsable('');
             setNewExpirationDate('');
-            setSerials(Array(4).fill(''));
+            setSerials(Array(3).fill('')); // Reiniciamos los seriales
             fetchData(); // Actualizamos los datos de la app
         } catch (error) {
             console.error(error);
@@ -78,7 +78,7 @@ const ToolingManagement = () => {
                         </div>
                     </div>
                     <div>
-                         <label className="label"><span className="label-text">Seriales de Herramentales (4 requeridos)</span></label>
+                         <label className="label"><span className="label-text">Seriales de Herramentales (BH, STENCIL, SQE)</span></label>
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {serials.map((serial, index) => (
                                 <div key={index}>
