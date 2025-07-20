@@ -3,6 +3,8 @@ import axios from 'axios';
 // --- CONFIGURACIÓN DE LA API ---
 const API_BASE_URL = 'https://api-service-ags.cw01.contiwan.com:7241/api';
 const MES_API_BASE_URL = 'https://iservice-equipment.fa.main.conti.de/v2.0/equipments/SMD_MOPS/units';
+const MES_API_V2_BASE = 'https://iservice-equipment.fa.main.conti.de/v2.0/equipments';
+
 
 // --- FUNCIONES DE API PARA LÍNEAS ---
 export const getLines = () => axios.get(`${API_BASE_URL}/Lineas`);
@@ -19,8 +21,23 @@ export const getToolings = () => axios.get(`${API_BASE_URL}/Herramentales`);
 export const addTooling = (tooling) => axios.post(`${API_BASE_URL}/Herramentales`, tooling);
 export const deleteTooling = (id) => axios.delete(`${API_BASE_URL}/Herramentales/${id}`);
 
-// --- FUNCIONES DE API PARA MES ---
+/**
+ * Obtiene los datos de las pruebas para un serial específico.
+ */
 export const getMesData = (serial) => {
-    const requestUrl = `${MES_API_BASE_URL}/${serial},CCN_SEMI/testdata?testdataFilter=newest`;
+    // NOTA: Puede que el equipment 'SMD_MOPS' también deba ser dinámico.
+    const requestUrl = `${MES_API_V2_BASE}/SMD_MOPS/units/${serial},CCN_SEMI/testdata?testdataFilter=newest`;
+    return fetch(requestUrl);
+};
+// --- FUNCIONES DE API PARA MES ---
+// export const getMesData = (serial) => {
+//    const requestUrl = `${MES_API_BASE_URL}/${serial},CCN_SEMI/testdata?testdataFilter=newest`;
+//    return fetch(requestUrl);
+//};
+
+export const getPanelUnits = (serial, lineName) => {
+    // Reemplazamos espacios en el nombre de la línea por si acaso y lo usamos como 'equipment'
+    const equipment = lineName.replace(/\s/g, '_'); 
+    const requestUrl = `${MES_API_V2_BASE}/${equipment}/units/${serial},SMD_MOPS?includeSerialchange=true`;
     return fetch(requestUrl);
 };

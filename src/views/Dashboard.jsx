@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { Factory, Clock, FileJson } from 'lucide-react';
 import { AppContext } from '../context/AppContext';
-import { getMesData } from '../api';
+import { getMesData, getPanelUnits } from '../api';
 import { getExpirationStatus } from '../utils/dateUtils';
 
 const Dashboard = () => {
@@ -30,18 +30,48 @@ const Dashboard = () => {
             });
     };
 
-    const handleShowDetails = (piece) => {
+    const handleShowDetails = async (piece) => {
         setModalInfo({ piece, loading: true, data: null, error: null });
-        getMesData(piece.serial) // Usamos la función de nuestra API centralizada
-            .then(res => res.json())
-            .then(data => {
-                setModalInfo({ piece, loading: false, data: data, error: null });
-            })
+
+        try {
+			// 1. Obtener el nombre de la línea para la URL de la API
+            const line = lines.find(l => l.lineaID === piece.lineaID);
+            if (!line) {
+                throw new Error('No se encontró la línea de producción para esta pieza.');
+            }
+
+            // 2. Obtener todas las unidades (seriales) del panel
+            const panelRes = await getPanelUnits(piece.serial, line.nombre);
+            if (!panelRes.ok) throw new Error(`Error al obtener los seriales del panel: ${panelRes.statusText}`);
+            const panelData = await panelRes.json();
+            const units = panelData?.data?.subunits;
+
+            if (!units || units.length === 0) {
+                setModalInfo({ piece, loading: false, data: [], error: 'No se encontraron seriales en el panel.' });
+                return;
+            }
+
+			// 3. Para cada unidad, obtener sus datos de prueba
+			// Combinamos la información de la unidad con el resultado de la prueba
+            const testDataPromises = units.map(unit =>
+                getMesData(unit.unitId)
+                    .then(res => res.ok ? res.json() : Promise.resolve({ fetchError: true }))
+                    .then(testData => ({
+                        ...testData,       // Resultado de la prueba (o el objeto de error)
+                        originalUnit: unit // Siempre adjuntamos la info original de la unidad
+                    }))
+                    .catch(() => ({ fetchError: true, originalUnit: unit })) // También en caso de error de red
+            );
+            
+            const results = await Promise.all(testDataPromises);
 			
-            .catch(error => {
-                console.error("Error al consultar la API de MES:", error);
-                setModalInfo({ piece, loading: false, data: null, error: error.message });
-            });
+            // 4. Guardar todos los resultados en el modal
+            setModalInfo({ piece, loading: false, data: results, error: null });
+
+        } catch (error) {
+            console.error("Error en el proceso de 'Ver Detalles':", error);
+            setModalInfo({ piece, loading: false, data: null, error: error.message });
+        }
     };
 
     return (
@@ -56,8 +86,7 @@ const Dashboard = () => {
 						    {pieces.filter(p => p.lineaID === line.lineaID).length === 0 && <p className="text-sm text-gray-400 col-span-full">No hay piezas golden asignadas.</p>}
                             {pieces.filter(p => p.lineaID === line.lineaID).map(piece => {
                                 const expirationStatus = getExpirationStatus(piece.fechaExpiracion);
-                                
-                                // --- AQUÍ ESTÁ LA CORRECCIÓN ---
+                                // Obtenemos el estado del escaneo para esta pieza
                                 // Verificamos que 'scanData' sea un objeto antes de intentar acceder a él.
                                 // Si es undefined, 'scanStatus' será 'Pendiente de paso' por defecto.
                                 const scanStatus = (scanData && scanData[piece.piezaID]) || 'Pendiente de paso';
