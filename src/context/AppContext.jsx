@@ -9,7 +9,7 @@ export const AppProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [modalInfo, setModalInfo] = useState(null);
     const [isSidebarOpen, setSidebarOpen] = useState(false);
-    const [userRole, setUserRole] = useState('editor');
+    const [userRole, setUserRole] = useState('editor'); // Estado del rol del usuario, por defecto 'editor'
     const [theme, setTheme] = useState('dracula'); // Declaración del estado del tema
     // --- ESTADO DE LOS DATOS DE LA API ---
     const [pieces, setPieces] = useState([]);

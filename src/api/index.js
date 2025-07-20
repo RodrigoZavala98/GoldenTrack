@@ -21,9 +21,6 @@ export const deleteTooling = (id) => axios.delete(`${API_BASE_URL}/Herramentales
 
 // --- FUNCIONES DE API PARA MES ---
 export const getMesData = (serial) => {
-    const requestUrl = `${MES_API_BASE_URL}/${serial},SMD_MOPS/testdata?testdataFilter=newest`;
-    // Nota: El endpoint de MES podría requerir un método de fetch diferente
-    // si tiene restricciones de CORS no compatibles con axios desde el navegador.
-    // Por ahora, lo mantenemos con fetch como en tu código original.
+    const requestUrl = `${MES_API_BASE_URL}/${serial},CCN_SEMI/testdata?testdataFilter=newest`;
     return fetch(requestUrl);
 };
