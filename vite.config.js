@@ -6,6 +6,7 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   optimizeDeps: {
-    include: ['lucide-react'], // <-- Añade esta sección
+    include: ['lucide-react'],
   },
+  Base: '/my-app/', // Adjust the base path as needed
 })
