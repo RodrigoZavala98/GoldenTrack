@@ -43,23 +43,16 @@ const ToolingDashboard = () => {
             
             const individualStatuses = {};
 
-            // Extraer el número de la línea del nombre de la línea (ej. "SMT Line 7" -> "7")
-            // Y formatearlo a dos dígitos (ej. "7" -> "07") para que coincida con el formato del log
-            const lineNumMatch = line.nombre.match(/\d+/g);
-            const lineNumberFormatted = lineNumMatch && lineNumMatch.length > 0
-                ? String(lineNumMatch[lineNumMatch.length - 1]).padStart(2, '0')
-                : null;
-
+            // Eliminamos la extracción y formateo del número de línea
+            // Ya no es necesario filtrar por línea en los logs.
+            
             tooling.seriales.forEach((s, index) => {
                 const serialNumber = s.serialNumber;
                 const mesResult = mesResults[index];
                 
-                // Filtrar por toolUid Y el número de línea formateado, si se encontró
+                // Ahora, el filtro solo busca por toolUid, sin considerar la línea.
                 const latestLog = allLogData
-                    .filter(log =>
-                        log.toolUid === serialNumber &&
-                        (lineNumberFormatted === null || log.linea === lineNumberFormatted)
-                    )
+                    .filter(log => log.toolUid === serialNumber)
                     .sort((a, b) => new Date(b.fechaHora) - new Date(a.fechaHora))[0];
 
                 let statusText;
