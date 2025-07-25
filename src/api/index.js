@@ -4,7 +4,7 @@ import axios from 'axios';
 const API_BASE_URL = 'https://api-service-ags.cw01.contiwan.com:7241/api';
 const MES_API_BASE_URL = 'https://iservice-equipment.fa.main.conti.de/v2.0/equipments/SMD_MOPS/units';
 const MES_API_V2_BASE = 'https://iservice-equipment.fa.main.conti.de/v2.0/equipments';
-
+const LOCAL_LOG_API_URL = 'https://localhost:7186/api/LogData'; // Nueva API local
 
 // --- FUNCIONES DE API PARA LÍNEAS ---
 export const getLines = () => axios.get(`${API_BASE_URL}/Lineas`);
@@ -43,7 +43,7 @@ export const getPanelUnits = (serial, lineName) => {
 };
 
 /**
- * Obtiene los datos de un herramental.
+ * Obtiene los datos de un herramental (incluyendo estado de bloqueo) de la API de MES.
  * @param {string} serial - El nombre del herramental.
  * @param {string} lineName - El nombre de la línea para construir la URL.
  * @returns {Promise} - La promesa de la petición fetch.
@@ -53,4 +53,12 @@ export const getToolingData = (serial, lineName) => {
     const equipment = lineName.replace(/\s/g, '_');
     const requestUrl = `${MES_API_V2_BASE}/${equipment}/carriers/${serial},SMT_TOOLING`;
     return fetch(requestUrl);
+};
+
+/**
+ * Obtiene todos los datos de log de la nueva API local.
+ * @returns {Promise} - La promesa de la petición fetch.
+ */
+export const getLogData = () => {
+    return fetch(LOCAL_LOG_API_URL);
 };

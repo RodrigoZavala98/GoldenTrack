@@ -1,12 +1,11 @@
 import React, { useContext, useState } from 'react';
 import { Trash2, Clock, Lock, Unlock } from 'lucide-react';
 import { AppContext } from '../../context/AppContext';
-import { deleteTooling, getToolingData } from '../../api';
+import { deleteTooling, getToolingData, getLogData } from '../../api';
 import { getExpirationStatus } from '../../utils/dateUtils';
 
 const ToolingDashboard = () => {
     const { toolings, lines, fetchData } = useContext(AppContext);
-    // El estado ahora guardará un objeto con los estados de cada serial
     const [toolingScanData, setToolingScanData] = useState({});
 
     const handleDeleteTooling = async (toolingId) => {
@@ -20,9 +19,6 @@ const ToolingDashboard = () => {
         }
     };
 
-    /**
-     * FUNCIÓN CORREGIDA: Valida el userComment desde la ruta correcta (data.carrierInfo.userComment).
-     */
     const handleUpdateLastPass = async (tooling) => {
         const line = lines.find(l => l.lineaID === tooling.lineaID);
         if (!line) {
@@ -30,38 +26,45 @@ const ToolingDashboard = () => {
             return;
         }
 
-        // Muestra un estado general de "Cargando..." para el grupo
         setToolingScanData(prev => ({ ...prev, [tooling.herramentalID]: { loading: true } }));
 
         try {
-            const promises = tooling.seriales.map(s => 
-                getToolingData(s.serialNumber, line.nombre).then(res => res.json())
+            const logDataResponse = await getLogData();
+            if (!logDataResponse.ok) throw new Error(`Error al obtener logs: ${logDataResponse.statusText}`);
+            const allLogData = await logDataResponse.json();
+
+            const mesPromises = tooling.seriales.map(s =>
+                getToolingData(s.serialNumber, line.nombre)
+                    .then(res => res.ok ? res.json() : Promise.resolve({ fetchError: true }))
+                    .catch(() => ({ fetchError: true }))
             );
 
-            const results = await Promise.all(promises);
+            const mesResults = await Promise.all(mesPromises);
             
             const individualStatuses = {};
 
-            results.forEach((result, index) => {
-                const serialNumber = tooling.seriales[index].serialNumber;
-                const data = result?.data;
+            // Extraer el número de la línea del nombre de la línea (ej. "SMT Line 7" -> "7")
+            // Y formatearlo a dos dígitos (ej. "7" -> "07") para que coincida con el formato del log
+            const lineNumMatch = line.nombre.match(/\d+/g);
+            const lineNumberFormatted = lineNumMatch && lineNumMatch.length > 0
+                ? String(lineNumMatch[lineNumMatch.length - 1]).padStart(2, '0')
+                : null;
 
-                if (!data) {
-                    individualStatuses[serialNumber] = 'Error API';
-                    return;
-                }
-
-                // --- LÓGICA CORREGIDA ---
-                // La ruta correcta es data.carrierInfo.userComment
-                const userComment = data.carrierInfo?.userComment;
-                const lastUse = data.carrierInfo?.lastUseDate;
-				const isLocked = data.carrierInfo?.lock?.locked;
+            tooling.seriales.forEach((s, index) => {
+                const serialNumber = s.serialNumber;
+                const mesResult = mesResults[index];
+                
+                // Filtrar por toolUid Y el número de línea formateado, si se encontró
+                const latestLog = allLogData
+                    .filter(log =>
+                        log.toolUid === serialNumber &&
+                        (lineNumberFormatted === null || log.linea === lineNumberFormatted)
+                    )
+                    .sort((a, b) => new Date(b.fechaHora) - new Date(a.fechaHora))[0];
 
                 let statusText;
-                if (userComment && userComment.toLowerCase() === 'cleaned') {
-                    statusText = 'Solo Limpieza, pendiente de montar';
-                } else if (lastUse) {
-                    statusText = new Date(lastUse).toLocaleString('es-MX', {
+                if (latestLog && latestLog.fechaHora) {
+                    statusText = new Date(latestLog.fechaHora).toLocaleString('es-MX', {
                         year: 'numeric', month: '2-digit', day: '2-digit',
                         hour: '2-digit', minute: '2-digit', second: '2-digit'
                     });
@@ -69,30 +72,16 @@ const ToolingDashboard = () => {
                     statusText = 'Sin Montaje';
                 }
 
-                // Si el comentario es 'Cleaned' (independientemente de mayúsculas), se ignora la fecha.
-                if (userComment && userComment.toLowerCase() === 'cleaned') {
-                    individualStatuses[serialNumber] = 'Solo Limpieza, pendiente de montar';
-                } else if (lastUse) {
-                    // Si no es 'cleaned' y hay fecha, se muestra la fecha.
-                    individualStatuses[serialNumber] = new Date(lastUse).toLocaleString('es-MX', {
-                        year: 'numeric', month: '2-digit', day: '2-digit',
-                        hour: '2-digit', minute: '2-digit', second: '2-digit'
-                    });
-                } else {
-                    // Si no es 'cleaned' pero tampoco hay fecha.
-                    individualStatuses[serialNumber] = 'Sin Montaje';
-                }
-				
-				// --- Se guarda el texto del estado Y el estado de bloqueo ---
+                const isLocked = mesResult?.carrierInfo?.lock?.locked;
+
                 individualStatuses[serialNumber] = { statusText, isLocked };
             });
 
-            // Actualiza el estado con un objeto que contiene los estados de cada serial
             setToolingScanData(prev => ({ ...prev, [tooling.herramentalID]: { statuses: individualStatuses } }));
 
         } catch (error) {
-            console.error("Error al consultar la API de herramentales:", error);
-            setToolingScanData(prev => ({ ...prev, [tooling.herramentalID]: { error: 'Error de red' } }));
+            console.error("Error al consultar las APIs de herramentales:", error);
+            setToolingScanData(prev => ({ ...prev, [tooling.herramentalID]: { error: 'Error de red o datos' } }));
         }
     };
 
@@ -129,31 +118,24 @@ const ToolingDashboard = () => {
                              <p className="text-sm mt-1">Línea: {lines.find(l => l.lineaID === tooling.lineaID)?.nombre || 'N/A'}</p>
                              <p className="text-sm">Resp: {tooling.responsable}</p>
                              
-                             {/* --- SECCIÓN DE VISUALIZACIÓN CORREGIDA --- */}
-                             {/* Este bloque entero se encarga de mostrar la lista de seriales y sus estados individuales. */}
                              <div className="mt-4 pt-2 border-t border-base-300">
                                 <p className="text-xs font-semibold mb-2">Herramentales y Último Pase:</p>
                                 
-                                {/* Muestra 'Cargando...' o 'Error' para todo el grupo si aplica */}
                                 {groupScanData?.loading && <p className="text-sm text-blue-400">Cargando datos...</p>}
                                 {groupScanData?.error && <p className="text-sm text-red-400">{groupScanData.error}</p>}
 
-                                 {/* El `<ul>` renderiza cada serial como un `<li>` */}
                                 <ul className="space-y-1 text-sm">
                                     {tooling.seriales.map((s, i) => {
-                                        // --- 4. Se extrae el objeto completo de estado ---
                                         const serialInfo = groupScanData?.statuses?.[s.serialNumber];
                                         const serialStatus = serialInfo?.statusText || 'Pendiente';
                                         const isLocked = serialInfo?.isLocked;
                                         
                                         let statusColor = 'text-gray-400';
                                         if (serialStatus.includes('/')) statusColor = 'text-green-400';
-                                        else if (serialStatus === 'Solo Limpieza, pendiente de montar') statusColor = 'text-yellow-400';
                                         else if (serialStatus.includes('Error') || serialStatus === 'Sin Montaje') statusColor = 'text-red-500';
 
                                         return (
                                             <li key={i} className="flex justify-between items-center text-xs">
-                                                {/* ---  Se muestra el ícono de candado --- */}
                                                 <div className="flex items-center gap-2">
                                                     {isLocked === true && <Lock size={16} className="text-red-500" title="Bloqueado" />}
                                                     {isLocked === false && <Unlock size={16} className="text-green-500" title="Desbloqueado" />}
