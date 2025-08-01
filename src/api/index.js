@@ -4,7 +4,7 @@ import axios from 'axios';
 const API_BASE_URL = 'https://api-service-ags.cw01.contiwan.com:7241/api';
 const MES_API_BASE_URL = 'https://iservice-equipment.fa.main.conti.de/v2.0/equipments/SMD_MOPS/units';
 const MES_API_V2_BASE = 'https://iservice-equipment.fa.main.conti.de/v2.0/equipments';
-const LOCAL_LOG_API_URL = 'https://localhost:7186/api/LogData'; // Nueva API local
+const LOCAL_LOG_API_URL = 'https://api-service-ags.cw01.contiwan.com:7245/api'; // Nueva API local
 
 // --- FUNCIONES DE API PARA LÍNEAS ---
 export const getLines = () => axios.get(`${API_BASE_URL}/Lineas`);
@@ -60,5 +60,5 @@ export const getToolingData = (serial, lineName) => {
  * @returns {Promise} - La promesa de la petición fetch.
  */
 export const getLogData = () => {
-    return fetch(LOCAL_LOG_API_URL);
+    return fetch(`${LOCAL_LOG_API_URL}/LogData`);
 };
