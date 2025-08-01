@@ -18,12 +18,12 @@ const ToolingManagement = () => {
         setSerials(newSerials);
     };
 
-    const handleAddTooling = async (e) => {
+const handleAddTooling = async (e) => {
         e.preventDefault();
         const cleanedSerials = serials.map(s => s.trim()).filter(s => s !== '');
 
-        if (!newToolingName.trim() || !selectedLine || !responsable.trim() || !newExpirationDate || cleanedSerials.length !== 3) {
-            alert("Por favor, completa todos los campos.");
+        if (!newToolingName.trim() || !selectedLine || !responsable.trim() || !newExpirationDate || cleanedSerials.length < 3) {
+            alert("Por favor, completa todos los campos y asegúrate de enviar al menos 3 seriales.");
             return;
         }
 
@@ -32,18 +32,18 @@ const ToolingManagement = () => {
             responsable,
             fechaExpiracion: newExpirationDate,
             lineaID: parseInt(selectedLine),
-            seriales: cleanedSerials.map(s => ({ serialNumber: s }))
+            seriales: cleanedSerials
         };
 
         try {
-            await addTooling(newTooling); // Usamos la función de la API
-            // Limpiamos el formulario
+            await addTooling(newTooling); // Usa la función de la API
+            // Limpia el formulario
             setNewToolingName('');
             setSelectedLine('');
             setResponsable('');
             setNewExpirationDate('');
-            setSerials(Array(3).fill('')); // Reiniciamos los seriales
-            fetchData(); // Actualizamos los datos de la app
+            setSerials(Array(3).fill('')); // Reinicia los seriales
+            fetchData(); // Actualiza los datos de la app
         } catch (error) {
             console.error(error);
             alert('No se pudo crear el grupo de herramentales.');
