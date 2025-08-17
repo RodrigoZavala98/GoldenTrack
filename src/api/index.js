@@ -1,10 +1,10 @@
 import axios from 'axios';
 
 // --- CONFIGURACIÓN DE LA API ---
-const API_BASE_URL = 'https://api-service-ags.cw01.contiwan.com:7241/api';
+const API_BASE_URL = 'https://fa00053vma.automotive-wan.com:7241/api';
 const MES_API_BASE_URL = 'https://iservice-equipment.fa.main.conti.de/v2.0/equipments/SMD_MOPS/units';
 const MES_API_V2_BASE = 'https://iservice-equipment.fa.main.conti.de/v2.0/equipments';
-const LOCAL_LOG_API_URL = 'https://api-service-ags.cw01.contiwan.com:7245/api'; // Nueva API local
+const LOCAL_LOG_API_URL = 'https://fa00053vma.automotive-wan.com:7245/api'; // Nueva API local
 
 // --- FUNCIONES DE API PARA LÍNEAS ---
 export const getLines = () => axios.get(`${API_BASE_URL}/Lineas`);

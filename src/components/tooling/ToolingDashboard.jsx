@@ -86,7 +86,7 @@ const ToolingDashboard = () => {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
-                <span>Recientemente se ha añadido una función para validar el último pase, así como una verificación del estado del herramental (bloqueada o no). Ahora, si un herramental fue únicamente limpiado y aún no ha sido probado en el equipo, el sistema mostrará un mensaje en letras amarillas: “Solo limpieza, pendiente de montar”.</span>
+                <span>Se ha creado el formulario para registro de herramental y actualmente se encuentra en fase de pruebas la validacion de herramental en lineas productivas de 1 a 7.</span>
                 
             </div>
             

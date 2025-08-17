@@ -14,7 +14,7 @@ const PieceManagement = () => {
     const [newExpirationDate, setNewExpirationDate] = useState('');
     const [responsable, setResponsable] = useState('');
 
-    const handleAddPiece = async (e) => {
+const handleAddPiece = async (e) => {
         e.preventDefault();
         const newPiece = {
             nombre: newPieceName,
